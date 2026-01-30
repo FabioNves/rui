@@ -2157,8 +2157,9 @@ export default function Home() {
             </h3>
             <p className="text-zinc-300">
               All data is stored locally in your browser (localStorage). Nothing
-              is sent to external servers except AI API calls. Your API keys are
-              stored in the server&apos;s environment variables.
+              is sent to external servers except AI API calls. If you connect
+              Mendeley, your access token is also stored locally. To erase all
+              data and start fresh, press the Reset button in the top bar.
             </p>
           </section>
         </div>

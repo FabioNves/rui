@@ -114,6 +114,13 @@ type AppState = {
   customSections: CustomSection[];
   reportSettings: ReportSettings;
   finalReportMarkdown?: string;
+  stepCosts?: {
+    structured?: number;
+    critique?: number;
+    relatedTotal?: number;
+    comparison?: number;
+    final?: number;
+  };
 };
 
 function newId() {
@@ -145,6 +152,7 @@ const DEFAULT_STATE: AppState = {
   customStructure: RECOMMENDED_STRUCTURE.join("\n"),
   customSections: DEFAULT_SECTIONS,
   reportSettings: DEFAULT_REPORT_SETTINGS,
+  stepCosts: {},
 };
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
@@ -186,44 +194,53 @@ function WorkflowItem({
   done,
   partial,
   disabled,
+  cost,
 }: {
   label: string;
   done: boolean;
   partial?: boolean;
   disabled?: boolean;
+  cost?: number;
 }) {
   return (
     <div
-      className={`flex items-center gap-2 text-xs ${disabled ? "opacity-40" : ""}`}
+      className={`flex items-center justify-between gap-2 text-xs ${disabled ? "opacity-40" : ""}`}
     >
-      {done ? (
-        <svg
-          className="h-4 w-4 text-emerald-400"
-          fill="currentColor"
-          viewBox="0 0 20 20"
-        >
-          <path
-            fillRule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-            clipRule="evenodd"
-          />
-        </svg>
-      ) : partial ? (
-        <svg
-          className="h-4 w-4 text-amber-400"
-          fill="currentColor"
-          viewBox="0 0 20 20"
-        >
-          <path
-            fillRule="evenodd"
-            d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-            clipRule="evenodd"
-          />
-        </svg>
-      ) : (
-        <div className="h-4 w-4 rounded-full border-2 border-zinc-600" />
+      <div className="flex items-center gap-2">
+        {done ? (
+          <svg
+            className="h-4 w-4 text-emerald-400"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+              clipRule="evenodd"
+            />
+          </svg>
+        ) : partial ? (
+          <svg
+            className="h-4 w-4 text-amber-400"
+            fill="currentColor"
+            viewBox="0 0 20 20"
+          >
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+              clipRule="evenodd"
+            />
+          </svg>
+        ) : (
+          <div className="h-4 w-4 rounded-full border-2 border-zinc-600" />
+        )}
+        <span className={done ? "text-zinc-300" : "text-zinc-500"}>
+          {label}
+        </span>
+      </div>
+      {cost !== undefined && cost > 0 && (
+        <span className="text-emerald-400 font-medium">€{cost.toFixed(2)}</span>
       )}
-      <span className={done ? "text-zinc-300" : "text-zinc-500"}>{label}</span>
     </div>
   );
 }
@@ -1347,7 +1364,7 @@ export default function Home() {
     setLogMessages((prev) => [...prev, { time, text }]);
   };
 
-  const addUsageLog = (usage: TokenUsage, model: string) => {
+  const addUsageLog = (usage: TokenUsage, model: string): number => {
     const cost = calculateCost(model, usage);
     const totalTokens = usage.inputTokens + usage.outputTokens;
     setSessionCost((prev) => ({
@@ -1358,6 +1375,7 @@ export default function Home() {
       `📊 Tokens: ${usage.inputTokens.toLocaleString()} in / ${usage.outputTokens.toLocaleString()} out${usage.cachedInputTokens ? ` (${usage.cachedInputTokens.toLocaleString()} cached)` : ""}`,
     );
     addLog(`💰 Cost: ${formatCost(cost)}`);
+    return cost;
   };
 
   const clearLog = () => {
@@ -1595,11 +1613,25 @@ export default function Home() {
 
       addLog("─".repeat(40));
       addLog("📥 Received response from AI");
-      addUsageLog(response.usage, state.model);
+      const cost = addUsageLog(response.usage, state.model);
       addLog("🔄 Validating and parsing response...");
 
-      if (target === "main") updateMain({ structured: response.result });
-      else updateRelated(target, { structured: response.result });
+      if (target === "main") {
+        updateMain({ structured: response.result });
+        setState((s) => ({
+          ...s,
+          stepCosts: { ...s.stepCosts, structured: cost },
+        }));
+      } else {
+        updateRelated(target, { structured: response.result });
+        setState((s) => ({
+          ...s,
+          stepCosts: {
+            ...s.stepCosts,
+            relatedTotal: (s.stepCosts?.relatedTotal ?? 0) + cost,
+          },
+        }));
+      }
 
       // Show what was extracted
       const result = response.result as {
@@ -1665,9 +1697,23 @@ export default function Home() {
           text: article.text,
         },
       );
-      addUsageLog(response.usage, state.model);
-      if (target === "main") updateMain({ critique: response.result });
-      else updateRelated(target, { critique: response.result });
+      const cost = addUsageLog(response.usage, state.model);
+      if (target === "main") {
+        updateMain({ critique: response.result });
+        setState((s) => ({
+          ...s,
+          stepCosts: { ...s.stepCosts, critique: cost },
+        }));
+      } else {
+        updateRelated(target, { critique: response.result });
+        setState((s) => ({
+          ...s,
+          stepCosts: {
+            ...s.stepCosts,
+            relatedTotal: (s.stepCosts?.relatedTotal ?? 0) + cost,
+          },
+        }));
+      }
       addLog("✅ Critical review complete!");
     } catch (e: unknown) {
       addLog(`❌ Error: ${errorMessage(e)}`);
@@ -1751,7 +1797,7 @@ export default function Home() {
 
       addLog("─".repeat(40));
       addLog("📥 Received response from AI");
-      addUsageLog(response.usage, state.model);
+      const cost = addUsageLog(response.usage, state.model);
 
       // Show what was found
       const result = response.result;
@@ -1765,7 +1811,11 @@ export default function Home() {
         addLog(`   Dimensions: ${result.comparisonDimensions.length} aspects`);
       addLog("─".repeat(40));
 
-      setState((s) => ({ ...s, comparison: response.result }));
+      setState((s) => ({
+        ...s,
+        comparison: response.result,
+        stepCosts: { ...s.stepCosts, comparison: cost },
+      }));
       addLog("✅ Comparative analysis complete!");
     } catch (e: unknown) {
       completed = true;
@@ -1890,7 +1940,7 @@ export default function Home() {
 
       addLog("─".repeat(40));
       addLog("📥 Received response from AI");
-      addUsageLog(response.usage, state.model);
+      const cost = addUsageLog(response.usage, state.model);
 
       // Show report stats
       const markdown = response.result.markdown;
@@ -1904,6 +1954,7 @@ export default function Home() {
       setState((s) => ({
         ...s,
         finalReportMarkdown: response.result.markdown,
+        stepCosts: { ...s.stepCosts, final: cost },
       }));
       addLog("✅ Final report generated!");
     } catch (e: unknown) {
@@ -2219,11 +2270,13 @@ export default function Home() {
             <WorkflowItem
               label="Structured analysis"
               done={Boolean(state.main.structured)}
+              cost={state.stepCosts?.structured}
             />
             {/* Step 3: Critical Review */}
             <WorkflowItem
               label="Critical review"
               done={Boolean(state.main.critique)}
+              cost={state.stepCosts?.critique}
             />
             {/* Step 4: Related Articles */}
             <WorkflowItem
@@ -2233,19 +2286,38 @@ export default function Home() {
                 state.related.every((r) => r.structured)
               }
               partial={state.related.some((r) => r.structured)}
+              cost={state.stepCosts?.relatedTotal}
             />
             {/* Step 5: Comparison */}
             <WorkflowItem
               label="Comparative analysis"
               done={Boolean(state.comparison)}
               disabled={state.related.length === 0}
+              cost={state.stepCosts?.comparison}
             />
             {/* Step 6: Final Report */}
             <WorkflowItem
               label="Final report"
               done={Boolean(state.finalReportMarkdown)}
+              cost={state.stepCosts?.final}
             />
           </div>
+          {/* Total Cost - shown when final report is done */}
+          {state.finalReportMarkdown && (
+            <div className="mt-3 flex items-center justify-between border-t border-cyan-500/20 pt-3">
+              <span className="text-xs font-semibold text-zinc-300">Total</span>
+              <span className="text-sm font-bold text-emerald-400">
+                €
+                {(
+                  (state.stepCosts?.structured ?? 0) +
+                  (state.stepCosts?.critique ?? 0) +
+                  (state.stepCosts?.relatedTotal ?? 0) +
+                  (state.stepCosts?.comparison ?? 0) +
+                  (state.stepCosts?.final ?? 0)
+                ).toFixed(2)}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Error/Busy Messages */}
@@ -4040,14 +4112,20 @@ export default function Home() {
           onDownload={
             state.finalReportMarkdown
               ? async () => {
-                  const modalReport = document.getElementById(
-                    "modal-report-content",
-                  );
-                  if (modalReport) {
-                    await exportElementToPdf(
-                      modalReport,
-                      "rui-critical-analysis.pdf",
+                  try {
+                    const modalReport = document.getElementById(
+                      "modal-report-content",
                     );
+                    if (modalReport) {
+                      await exportElementToPdf(
+                        modalReport,
+                        "rui-critical-analysis.pdf",
+                      );
+                    } else {
+                      console.error("Modal report content element not found");
+                    }
+                  } catch (err) {
+                    console.error("PDF export failed:", err);
                   }
                 }
               : undefined
@@ -4111,14 +4189,20 @@ export default function Home() {
                 </button>
                 <button
                   onClick={async () => {
-                    const modalReport = document.getElementById(
-                      "modal-report-content",
-                    );
-                    if (modalReport) {
-                      await exportElementToPdf(
-                        modalReport,
-                        "rui-critical-analysis.pdf",
+                    try {
+                      const modalReport = document.getElementById(
+                        "modal-report-content",
                       );
+                      if (modalReport) {
+                        await exportElementToPdf(
+                          modalReport,
+                          "rui-critical-analysis.pdf",
+                        );
+                      } else {
+                        console.error("Modal report content element not found");
+                      }
+                    } catch (err) {
+                      console.error("PDF export failed:", err);
                     }
                   }}
                   className="flex items-center gap-1.5 rounded-lg bg-emerald-800 px-3 py-1.5 text-xs font-medium text-emerald-100 hover:bg-emerald-700"

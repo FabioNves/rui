@@ -8,6 +8,11 @@ export async function exportElementToPdf(
     throw new Error("PDF export is only available in the browser");
   }
 
+  // Ensure element has dimensions
+  if (element.offsetWidth === 0 || element.offsetHeight === 0) {
+    throw new Error("Element has no dimensions - cannot export to PDF");
+  }
+
   const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
     import("html2canvas"),
     import("jspdf"),
@@ -19,6 +24,7 @@ export async function exportElementToPdf(
   clone.style.left = "-9999px";
   clone.style.top = "0";
   clone.style.width = `${element.offsetWidth}px`;
+  clone.style.minHeight = `${element.offsetHeight}px`;
   document.body.appendChild(clone);
 
   // Apply inline styles to override any oklab colors
@@ -72,9 +78,28 @@ export async function exportElementToPdf(
       scale: 2,
       backgroundColor: "#ffffff",
       useCORS: true,
-      logging: false,
+      logging: true, // Enable logging to debug issues
       removeContainer: false,
+      onclone: (clonedDoc) => {
+        // Force all text to be dark on the cloned document
+        const allTextElements = clonedDoc.querySelectorAll("*");
+        allTextElements.forEach((el) => {
+          const htmlEl = el as HTMLElement;
+          if (htmlEl.style) {
+            // Force dark text colors for readability
+            const computed = window.getComputedStyle(htmlEl);
+            if (computed.color) {
+              // Convert any color format to a safe RGB value
+              htmlEl.style.setProperty("color", "#1f2937", "important");
+            }
+          }
+        });
+      },
     });
+
+    if (!canvas || canvas.width === 0 || canvas.height === 0) {
+      throw new Error("Canvas generation failed - empty canvas");
+    }
 
     const imgData = canvas.toDataURL("image/png");
 

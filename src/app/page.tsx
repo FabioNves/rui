@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import * as React from "react";
+import * as ReactDOM from "react-dom";
 import { extractPdfWithPages, type ExtractedPage } from "@/lib/pdf/extractText";
 import { usePersistedState } from "@/lib/usePersistedState";
 import { RECOMMENDED_STRUCTURE } from "@/lib/recommendedStructure";
@@ -4269,153 +4270,155 @@ function MendeleyLibraryBrowser({
         📚 My Library
       </button>
 
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-              <div>
-                <h3 className="text-lg font-semibold text-zinc-50">
-                  My Mendeley Library
-                </h3>
-                <p className="text-xs text-zinc-400">
-                  {totalCount !== undefined
-                    ? `${totalCount} articles in your library`
-                    : `${docs.length} articles loaded`}
-                </p>
-              </div>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
-              >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+      {isOpen &&
+        ReactDOM.createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+            <div className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-zinc-50">
+                    My Mendeley Library
+                  </h3>
+                  <p className="text-xs text-zinc-400">
+                    {totalCount !== undefined
+                      ? `${totalCount} articles in your library`
+                      : `${docs.length} articles loaded`}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
 
-            {/* Search filter */}
-            <div className="border-b border-white/10 px-5 py-3">
-              <input
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-2 text-sm text-zinc-100"
-                placeholder="Filter by title, author, DOI, or abstract..."
-              />
-            </div>
+              {/* Search filter */}
+              <div className="border-b border-white/10 px-5 py-3">
+                <input
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-2 text-sm text-zinc-100"
+                  placeholder="Filter by title, author, DOI, or abstract..."
+                />
+              </div>
 
-            {/* Library list */}
-            <div className="flex-1 overflow-y-auto p-4">
-              {loading && docs.length === 0 ? (
-                <div className="py-12 text-center text-zinc-400">
-                  Loading your library...
-                </div>
-              ) : filteredDocs.length === 0 ? (
-                <div className="py-12 text-center text-zinc-400">
-                  {searchFilter
-                    ? "No articles match your filter"
-                    : "Your library is empty"}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {filteredDocs.map((doc) => (
-                    <button
-                      key={doc.id}
-                      onClick={() => {
-                        onAdd(doc);
-                        setIsOpen(false);
-                      }}
-                      className="w-full rounded-xl border border-white/10 bg-zinc-900/50 p-4 text-left transition hover:border-cyan-500/30 hover:bg-zinc-900"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-semibold text-zinc-50">
-                            {doc.title ?? "Untitled"}
+              {/* Library list */}
+              <div className="flex-1 overflow-y-auto p-4">
+                {loading && docs.length === 0 ? (
+                  <div className="py-12 text-center text-zinc-400">
+                    Loading your library...
+                  </div>
+                ) : filteredDocs.length === 0 ? (
+                  <div className="py-12 text-center text-zinc-400">
+                    {searchFilter
+                      ? "No articles match your filter"
+                      : "Your library is empty"}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredDocs.map((doc) => (
+                      <button
+                        key={doc.id}
+                        onClick={() => {
+                          onAdd(doc);
+                          setIsOpen(false);
+                        }}
+                        className="w-full rounded-xl border border-white/10 bg-zinc-900/50 p-4 text-left transition hover:border-cyan-500/30 hover:bg-zinc-900"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-semibold text-zinc-50">
+                              {doc.title ?? "Untitled"}
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400">
+                              {doc.year && <span>{doc.year}</span>}
+                              {doc.authors?.length > 0 && (
+                                <span className="truncate">
+                                  {doc.authors.slice(0, 3).join(", ")}
+                                  {doc.authors.length > 3 && " et al."}
+                                </span>
+                              )}
+                              {doc.sourceName && (
+                                <span className="italic">{doc.sourceName}</span>
+                              )}
+                            </div>
+                            {doc.doi && (
+                              <div className="mt-1 text-xs text-zinc-500">
+                                DOI: {doc.doi}
+                              </div>
+                            )}
+                            {doc.abstract && (
+                              <div className="mt-2 line-clamp-2 text-xs leading-relaxed text-zinc-400">
+                                {doc.abstract}
+                              </div>
+                            )}
                           </div>
-                          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400">
-                            {doc.year && <span>{doc.year}</span>}
-                            {doc.authors?.length > 0 && (
-                              <span className="truncate">
-                                {doc.authors.slice(0, 3).join(", ")}
-                                {doc.authors.length > 3 && " et al."}
+                          <div className="flex flex-col items-end gap-1">
+                            {doc.fileAttached && (
+                              <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                                PDF
                               </span>
                             )}
-                            {doc.sourceName && (
-                              <span className="italic">{doc.sourceName}</span>
+                            {doc.type && (
+                              <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-400">
+                                {doc.type}
+                              </span>
                             )}
                           </div>
-                          {doc.doi && (
-                            <div className="mt-1 text-xs text-zinc-500">
-                              DOI: {doc.doi}
-                            </div>
-                          )}
-                          {doc.abstract && (
-                            <div className="mt-2 line-clamp-2 text-xs leading-relaxed text-zinc-400">
-                              {doc.abstract}
-                            </div>
-                          )}
                         </div>
-                        <div className="flex flex-col items-end gap-1">
-                          {doc.fileAttached && (
-                            <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                              PDF
-                            </span>
-                          )}
-                          {doc.type && (
-                            <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-400">
-                              {doc.type}
-                            </span>
-                          )}
+                        <div className="mt-2 text-[10px] text-cyan-400">
+                          Click to add as related article
                         </div>
-                      </div>
-                      <div className="mt-2 text-[10px] text-cyan-400">
-                        Click to add as related article
-                      </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Load more */}
+                {hasMore && !searchFilter && (
+                  <div className="mt-4 text-center">
+                    <button
+                      onClick={() => void loadLibrary(true)}
+                      disabled={loading}
+                      className="rounded-xl border border-white/10 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
+                    >
+                      {loading ? "Loading..." : "Load more"}
                     </button>
-                  ))}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
 
-              {/* Load more */}
-              {hasMore && !searchFilter && (
-                <div className="mt-4 text-center">
-                  <button
-                    onClick={() => void loadLibrary(true)}
-                    disabled={loading}
-                    className="rounded-xl border border-white/10 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
-                  >
-                    {loading ? "Loading..." : "Load more"}
-                  </button>
-                </div>
-              )}
+              {/* Footer */}
+              <div className="flex items-center justify-between border-t border-white/10 px-5 py-3">
+                <span className="text-xs text-zinc-500">
+                  Showing {filteredDocs.length} of {docs.length} loaded
+                </span>
+                <button
+                  onClick={() => void loadLibrary()}
+                  disabled={loading}
+                  className="text-xs text-cyan-400 hover:text-cyan-300 disabled:opacity-50"
+                >
+                  Refresh
+                </button>
+              </div>
             </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-between border-t border-white/10 px-5 py-3">
-              <span className="text-xs text-zinc-500">
-                Showing {filteredDocs.length} of {docs.length} loaded
-              </span>
-              <button
-                onClick={() => void loadLibrary()}
-                disabled={loading}
-                className="text-xs text-cyan-400 hover:text-cyan-300 disabled:opacity-50"
-              >
-                Refresh
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

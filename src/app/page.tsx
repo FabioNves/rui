@@ -4270,7 +4270,7 @@ function MendeleyLibraryBrowser({
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">

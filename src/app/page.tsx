@@ -2754,6 +2754,21 @@ export default function Home() {
     });
     addLog("─".repeat(40));
 
+    // Log which analyses are being read (immediately, not simulated)
+    addLog("📖 Reading analyses into context:");
+    addLog(`   📄 Main: "${state.main.title ?? "Untitled"}"`);
+    if (state.main.structured) addLog("      ✓ Structured analysis");
+    if (state.main.critique) addLog("      ✓ Critical review");
+    relatedWithData.forEach((r, idx) => {
+      addLog(`   📄 Related ${idx + 1}: "${r.title ?? "Untitled"}"`);
+      if (r.structured) addLog("      ✓ Structured analysis");
+      if (r.critique) addLog("      ✓ Critical review");
+    });
+    if (state.comparison) {
+      addLog("   📊 Pairwise comparison included");
+    }
+    addLog("─".repeat(40));
+
     // Progress simulation showing section generation
     const sectionMessages = structure.map((sec, idx) => ({
       delay: 3000 + idx * 4000, // Stagger section messages
@@ -2761,7 +2776,6 @@ export default function Home() {
     }));
 
     const progressMessages = [
-      { delay: 500, msg: "📖 Reading all analyses..." },
       { delay: 2000, msg: "🏗️ Building report structure..." },
       ...sectionMessages,
       {

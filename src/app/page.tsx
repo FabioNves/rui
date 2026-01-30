@@ -2465,43 +2465,8 @@ export default function Home() {
           </div>
         </div>
 
-        <Card
-          title="1) Settings"
-          right={
-            state.mendeley?.accessToken ? (
-              <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-950/30 px-3 py-1.5 text-xs font-medium text-emerald-400">
-                  <svg
-                    className="h-3.5 w-3.5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  Mendeley Connected
-                </span>
-                <button
-                  onClick={() => setState((s) => ({ ...s, mendeley: {} }))}
-                  className="rounded-lg border border-red-500/30 bg-red-950/30 px-3 py-1.5 text-xs font-medium text-red-400 hover:bg-red-900/30"
-                >
-                  Disconnect
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={connectMendeley}
-                className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-100 hover:bg-zinc-800"
-              >
-                Connect Mendeley (optional)
-              </button>
-            )
-          }
-        >
-          <div className="grid gap-3 md:grid-cols-3">
+        <Card title="1) Settings">
+          <div className="grid gap-3">
             <label className="grid gap-1">
               <span className="text-xs font-medium text-zinc-300">
                 Model provider
@@ -2515,26 +2480,23 @@ export default function Home() {
                 <option value="gemini">Google Gemini</option>
               </select>
             </label>
-            <label className="grid gap-1 md:col-span-2">
-              <span className="text-xs font-medium text-zinc-300">
-                Model name
-              </span>
-              <input
-                value={state.model}
-                onChange={(e) =>
-                  setState((s) => ({ ...s, model: e.target.value }))
-                }
-                className="rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
-                placeholder={
-                  state.provider === "openai"
-                    ? "gpt-5.2"
-                    : "gemini-3-pro-preview"
-                }
-              />
-              <div className="text-xs text-zinc-400">
-                Keys are read from server env vars (not stored in the browser).
-              </div>
-            </label>
+            {process.env.NODE_ENV !== "production" && (
+              <label className="grid gap-1">
+                <span className="text-xs font-medium text-zinc-300">
+                  Model name (dev only)
+                </span>
+                <input
+                  value={state.model}
+                  onChange={(e) =>
+                    setState((s) => ({ ...s, model: e.target.value }))
+                  }
+                  className="rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                  placeholder={
+                    state.provider === "openai" ? "gpt-4o" : "gemini-2.0-flash"
+                  }
+                />
+              </label>
+            )}
           </div>
         </Card>
 
@@ -2947,7 +2909,42 @@ export default function Home() {
           )}
         </Modal>
 
-        <Card title="3) Related Articles">
+        <Card
+          title="3) Related Articles"
+          right={
+            state.mendeley?.accessToken ? (
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-950/30 px-2 py-1 text-xs font-medium text-emerald-400">
+                  <svg
+                    className="h-3 w-3"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span className="hidden sm:inline">Mendeley</span>
+                </span>
+                <button
+                  onClick={() => setState((s) => ({ ...s, mendeley: {} }))}
+                  className="rounded-lg border border-red-500/30 bg-red-950/30 px-2 py-1 text-xs font-medium text-red-400 hover:bg-red-900/30"
+                >
+                  Disconnect
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={connectMendeley}
+                className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1 text-xs font-medium text-zinc-100 hover:bg-zinc-800"
+              >
+                Connect Mendeley
+              </button>
+            )
+          }
+        >
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={addRelated}
@@ -2995,11 +2992,6 @@ export default function Home() {
               }
               onError={(msg) => setError(msg)}
             />
-            {!state.mendeley?.accessToken ? (
-              <div className="text-xs text-zinc-400">
-                Tip: connect Mendeley to search related work.
-              </div>
-            ) : null}
           </div>
 
           <div className="mt-4 grid gap-3">

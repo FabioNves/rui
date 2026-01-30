@@ -1978,8 +1978,18 @@ export default function Home() {
         text: extracted.fullText,
         extractedPages: extracted.pages,
       };
-      if (target === "main") updateMain(patch);
-      else updateRelated(target, patch);
+      if (target === "main") {
+        updateMain(patch);
+      } else {
+        // For related articles, use PDF filename as title if no title exists
+        const relatedArticle = state.related.find((r) => r.id === target);
+        if (relatedArticle && !relatedArticle.title) {
+          // Remove .pdf extension for cleaner title
+          const titleFromPdf = file.name.replace(/\.pdf$/i, "");
+          patch.title = titleFromPdf;
+        }
+        updateRelated(target, patch);
+      }
     } catch (e: unknown) {
       setError(errorMessage(e));
     } finally {

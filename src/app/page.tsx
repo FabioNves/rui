@@ -1371,6 +1371,7 @@ export default function Home() {
   const [helpModalOpen, setHelpModalOpen] = React.useState(false);
   const [comparisonModalOpen, setComparisonModalOpen] = React.useState(false);
   const [finalReportModalOpen, setFinalReportModalOpen] = React.useState(false);
+  const [mobileActivityOpen, setMobileActivityOpen] = React.useState(false);
   // State for related article modals - stores the article id or null
   const [relatedTextModalId, setRelatedTextModalId] = React.useState<
     string | null
@@ -1967,24 +1968,52 @@ export default function Home() {
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(900px_circle_at_20%_10%,rgba(59,130,246,0.18),transparent_55%),radial-gradient(700px_circle_at_80%_20%,rgba(168,85,247,0.16),transparent_55%),radial-gradient(800px_circle_at_40%_90%,rgba(34,197,94,0.10),transparent_55%)]" />
       <header className="relative border-b border-white/10 bg-zinc-950/80 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-3 py-2 sm:gap-4 sm:px-6 sm:py-3 md:pr-[340px]">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Image src="/rui.png" alt="RUI" width={32} height={32} priority />
             <div className="bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-sm font-bold tracking-tight text-transparent">
-              RUI — Research Understanding Intelligence
+              <span className="sm:hidden">RUI</span>
+              <span className="hidden sm:inline">
+                RUI — Research Understanding Intelligence
+              </span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-400 ring-1 ring-emerald-500/20">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="hidden xs:inline-flex rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-400 ring-1 ring-emerald-500/20">
               Local-only
             </span>
+            {/* Mobile Activity Log Toggle */}
+            <button
+              onClick={() => setMobileActivityOpen((p) => !p)}
+              className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-all md:hidden ${
+                mobileActivityOpen
+                  ? "border-cyan-500/40 bg-cyan-950/50 text-cyan-300"
+                  : "border-white/5 bg-zinc-800/60 text-zinc-300 hover:border-cyan-500/20 hover:bg-cyan-950/40 hover:text-cyan-300"
+              }`}
+              title="Activity Log"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                />
+              </svg>
+              Activity
+            </button>
             <button
               onClick={() => setHelpModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-white/5 bg-zinc-800/60 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-all hover:border-white/10 hover:bg-zinc-700/60 hover:text-zinc-100"
+              className="flex items-center gap-1.5 rounded-lg border border-white/5 bg-zinc-800/60 px-2 py-1.5 text-xs font-medium text-zinc-300 transition-all hover:border-white/10 hover:bg-zinc-700/60 hover:text-zinc-100 sm:px-3"
               title="Help & FAQ"
             >
               <svg
-                className="h-3.5 w-3.5"
+                className="h-4 w-4 sm:h-3.5 sm:w-3.5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1996,14 +2025,15 @@ export default function Home() {
                   d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              Questions
+              <span className="hidden sm:inline">Questions</span>
             </button>
             <button
               onClick={resetAll}
-              className="flex items-center gap-1.5 rounded-lg border border-white/5 bg-zinc-800/60 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-all hover:border-red-500/20 hover:bg-red-950/40 hover:text-red-300"
+              className="flex items-center gap-1.5 rounded-lg border border-white/5 bg-zinc-800/60 px-2 py-1.5 text-xs font-medium text-zinc-300 transition-all hover:border-red-500/20 hover:bg-red-950/40 hover:text-red-300 sm:px-3"
+              title="Reset"
             >
               <svg
-                className="h-3.5 w-3.5"
+                className="h-4 w-4 sm:h-3.5 sm:w-3.5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -2015,7 +2045,7 @@ export default function Home() {
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                 />
               </svg>
-              Reset
+              <span className="hidden sm:inline">Reset</span>
             </button>
           </div>
         </div>
@@ -2135,24 +2165,48 @@ export default function Home() {
       </Modal>
 
       {/* Workflow Progress & AI Activity Log - Fixed Right Sidebar */}
-      <div className="fixed bottom-4 right-4 top-20 z-40 flex w-80 flex-col rounded-xl border border-cyan-500/30 bg-zinc-950/95 backdrop-blur">
+      <div
+        className={`fixed bottom-4 right-4 top-20 z-40 flex w-80 flex-col rounded-xl border border-cyan-500/30 bg-zinc-950/95 backdrop-blur transition-transform duration-300 ${mobileActivityOpen ? "translate-x-0" : "translate-x-[calc(100%+1rem)]"} md:translate-x-0`}
+      >
         {/* Workflow Progress */}
         <div className="border-b border-cyan-500/20 p-3">
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-zinc-300">
-            <svg
-              className="h-4 w-4 text-cyan-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div className="mb-2 flex items-center justify-between text-xs font-semibold text-zinc-300">
+            <div className="flex items-center gap-2">
+              <svg
+                className="h-4 w-4 text-cyan-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                />
+              </svg>
+              Workflow Progress
+            </div>
+            {/* Close button - only visible on mobile */}
+            <button
+              onClick={() => setMobileActivityOpen(false)}
+              className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 md:hidden"
+              title="Close"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-              />
-            </svg>
-            Workflow Progress
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
           </div>
           <div className="space-y-1.5">
             {/* Step 1: Main Article */}
@@ -2293,26 +2347,26 @@ export default function Home() {
         </div>
       </div>
 
-      <main className="relative mx-auto grid max-w-5xl gap-4 px-6 py-6">
+      <main className="relative mx-auto grid max-w-5xl gap-3 px-3 py-4 sm:gap-4 sm:px-6 sm:py-6 md:pr-[340px]">
         {/* Hero Branding */}
-        <div className="flex flex-col items-center justify-center py-8">
+        <div className="flex flex-col items-center justify-center py-4 sm:py-8">
           <Image
             src="/rui.png"
             alt="RUI"
             width={160}
             height={160}
             priority
-            className="h-40 w-auto"
+            className="h-24 w-auto sm:h-40"
           />
-          <h1 className="mt-4 bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-center text-4xl font-bold tracking-tight text-transparent">
+          <h1 className="mt-3 bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-center text-2xl font-bold tracking-tight text-transparent sm:mt-4 sm:text-4xl">
             Research Understanding Intelligence
           </h1>
-          <p className="mt-2 text-center text-sm text-zinc-400">
+          <p className="mt-1.5 text-center text-xs text-zinc-400 sm:mt-2 sm:text-sm">
             AI-assisted critical analysis workflow for academic research
           </p>
 
-          {/* Simplified Workflow */}
-          <div className="mt-8 flex items-center justify-center gap-2 text-xs">
+          {/* Simplified Workflow - hidden on mobile */}
+          <div className="mt-6 hidden items-center justify-center gap-2 text-xs sm:mt-8 sm:flex">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-zinc-300">
                 <svg

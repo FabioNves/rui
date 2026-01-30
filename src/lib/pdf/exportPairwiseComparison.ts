@@ -111,16 +111,17 @@ export async function exportPairwiseComparisonsToPdf(
 
   // Helper to add text with word wrap
   const addText = (
-    text: string,
+    text: string | undefined | null,
     fontSize: number,
     color: string,
     bold = false,
     indent = 0,
   ) => {
+    if (!text) return; // Skip if text is empty/undefined/null
     pdf.setFontSize(fontSize);
     pdf.setTextColor(color);
     pdf.setFont("helvetica", bold ? "bold" : "normal");
-    const lines = pdf.splitTextToSize(text, contentWidth - indent);
+    const lines = pdf.splitTextToSize(String(text), contentWidth - indent);
     for (const line of lines) {
       checkPageBreak(fontSize * 1.4);
       pdf.text(line, margin + indent, y);
@@ -350,10 +351,14 @@ export async function exportPairwiseComparisonsToPdf(
         y -= 9 * 1.4; // Go back to same line
         pdf.setFont("helvetica", "normal");
         const mainLines = pdf.splitTextToSize(
-          dim.mainSummary,
+          dim.mainSummary ?? "N/A",
           contentWidth - 50,
         );
-        pdf.text(mainLines[0], margin + 16 + pdf.getTextWidth("Main: "), y);
+        pdf.text(
+          mainLines[0] ?? "",
+          margin + 16 + pdf.getTextWidth("Main: "),
+          y,
+        );
         y += 9 * 1.4;
         for (let j = 1; j < mainLines.length; j++) {
           pdf.text(mainLines[j], margin + 16, y);
@@ -365,10 +370,14 @@ export async function exportPairwiseComparisonsToPdf(
         y -= 9 * 1.4;
         pdf.setFont("helvetica", "normal");
         const relLines = pdf.splitTextToSize(
-          dim.relatedSummary,
+          dim.relatedSummary ?? "N/A",
           contentWidth - 60,
         );
-        pdf.text(relLines[0], margin + 16 + pdf.getTextWidth("Related: "), y);
+        pdf.text(
+          relLines[0] ?? "",
+          margin + 16 + pdf.getTextWidth("Related: "),
+          y,
+        );
         y += 9 * 1.4;
         for (let j = 1; j < relLines.length; j++) {
           pdf.text(relLines[j], margin + 16, y);
@@ -427,21 +436,21 @@ export async function exportPairwiseComparisonsToPdf(
       addText("Gap Analysis", 12, colors.heading, true);
       y += 4;
 
-      if (comparison.gapAnalysis.uniqueToMain.length > 0) {
+      if (comparison.gapAnalysis.uniqueToMain?.length > 0) {
         addText("Unique to Main Article:", 10, colors.emerald, true, 8);
         for (const g of comparison.gapAnalysis.uniqueToMain) {
           addText(`• ${g}`, 9, colors.text, false, 16);
         }
       }
 
-      if (comparison.gapAnalysis.uniqueToRelated.length > 0) {
+      if (comparison.gapAnalysis.uniqueToRelated?.length > 0) {
         addText("Unique to Related Article:", 10, colors.blue, true, 8);
         for (const g of comparison.gapAnalysis.uniqueToRelated) {
           addText(`• ${g}`, 9, colors.text, false, 16);
         }
       }
 
-      if (comparison.gapAnalysis.sharedGaps.length > 0) {
+      if (comparison.gapAnalysis.sharedGaps?.length > 0) {
         addText("Shared Gaps:", 10, colors.muted, true, 8);
         for (const g of comparison.gapAnalysis.sharedGaps) {
           addText(`• ${g}`, 9, colors.text, false, 16);
@@ -509,6 +518,7 @@ export async function exportPairwiseComparisonsToPdf(
       ];
 
       for (const item of rigorItems) {
+        if (!item.data) continue; // Skip if data is missing
         checkPageBreak(40);
         const verdictText =
           item.data.verdict === "main_stronger"
@@ -517,8 +527,14 @@ export async function exportPairwiseComparisonsToPdf(
               ? "[Related ▲]"
               : "[Equal]";
         addText(`${item.label} ${verdictText}`, 10, colors.subheading, true, 8);
-        addText(`Main: ${item.data.main}`, 9, colors.text, false, 16);
-        addText(`Related: ${item.data.related}`, 9, colors.text, false, 16);
+        addText(`Main: ${item.data.main ?? "N/A"}`, 9, colors.text, false, 16);
+        addText(
+          `Related: ${item.data.related ?? "N/A"}`,
+          9,
+          colors.text,
+          false,
+          16,
+        );
         y += 2;
       }
       y += 8;
@@ -530,21 +546,21 @@ export async function exportPairwiseComparisonsToPdf(
       addText("Temporal Context", 12, colors.heading, true);
       y += 4;
       addText(
-        `Chronology: ${comparison.temporalContext.chronologicalNote}`,
+        `Chronology: ${comparison.temporalContext.chronologicalNote ?? "N/A"}`,
         9,
         colors.text,
         false,
         8,
       );
       addText(
-        `Method Evolution: ${comparison.temporalContext.methodologicalEvolution}`,
+        `Method Evolution: ${comparison.temporalContext.methodologicalEvolution ?? "N/A"}`,
         9,
         colors.text,
         false,
         8,
       );
       addText(
-        `Findings Progression: ${comparison.temporalContext.findingsProgression}`,
+        `Findings Progression: ${comparison.temporalContext.findingsProgression ?? "N/A"}`,
         9,
         colors.text,
         false,
@@ -559,14 +575,14 @@ export async function exportPairwiseComparisonsToPdf(
       addText("Recommendations", 12, colors.heading, true);
       y += 4;
 
-      if (comparison.recommendations.forResearchers.length > 0) {
+      if (comparison.recommendations.forResearchers?.length > 0) {
         addText("For Researchers:", 10, colors.subheading, true, 8);
         for (const r of comparison.recommendations.forResearchers) {
           addText(`• ${r}`, 9, colors.text, false, 16);
         }
       }
 
-      if (comparison.recommendations.forPractitioners.length > 0) {
+      if (comparison.recommendations.forPractitioners?.length > 0) {
         addText("For Practitioners:", 10, colors.subheading, true, 8);
         for (const r of comparison.recommendations.forPractitioners) {
           addText(`• ${r}`, 9, colors.text, false, 16);

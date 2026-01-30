@@ -2671,17 +2671,36 @@ export default function Home() {
     if (state.comparison) addLog(`🔄 Including comparative analysis`);
     addLog("─".repeat(40));
 
-    // Progress simulation
+    // Log each section that will be generated
+    addLog("📋 Sections to generate:");
+    structure.forEach((sec, idx) => {
+      const notes = sec.notes ? ` (with notes)` : "";
+      addLog(`   ${idx + 1}. ${sec.title}${notes}`);
+    });
+    addLog("─".repeat(40));
+
+    // Progress simulation showing section generation
+    const sectionMessages = structure.map((sec, idx) => ({
+      delay: 3000 + idx * 4000, // Stagger section messages
+      msg: `✍️ Writing: ${sec.title}...`,
+    }));
+
     const progressMessages = [
       { delay: 500, msg: "📖 Reading all analyses..." },
-      { delay: 3000, msg: "🏗️ Building report structure..." },
-      { delay: 6000, msg: "✍️ Writing introduction..." },
-      { delay: 10000, msg: "📊 Synthesizing methodology critique..." },
-      { delay: 15000, msg: "💡 Analyzing contributions..." },
-      { delay: 20000, msg: "⚠️ Evaluating limitations..." },
-      { delay: 25000, msg: "📋 Generating conclusions..." },
-      { delay: 35000, msg: "⏳ Still processing (comprehensive report)..." },
-      { delay: 50000, msg: "⏳ Almost there..." },
+      { delay: 2000, msg: "🏗️ Building report structure..." },
+      ...sectionMessages,
+      {
+        delay: 3000 + structure.length * 4000 + 5000,
+        msg: "📋 Finalizing report...",
+      },
+      {
+        delay: 3000 + structure.length * 4000 + 15000,
+        msg: "⏳ Still processing (comprehensive report)...",
+      },
+      {
+        delay: 3000 + structure.length * 4000 + 30000,
+        msg: "⏳ Almost there...",
+      },
     ];
 
     const timeouts: NodeJS.Timeout[] = [];
@@ -3096,7 +3115,10 @@ export default function Home() {
             {/* Step 5: Comparison */}
             <WorkflowItem
               label="Comparative analysis"
-              done={Boolean(state.comparison)}
+              done={Boolean(
+                state.pairwiseComparisons &&
+                Object.keys(state.pairwiseComparisons).length > 0,
+              )}
               disabled={state.related.length === 0}
               cost={state.stepCosts?.comparison}
             />
@@ -3578,11 +3600,18 @@ export default function Home() {
           onDownload={
             state.main.structured
               ? async () => {
-                  await exportStructuredAnalysisToPdf(
-                    state.main.structured as StructuredAnalysisData,
-                    state.main.title,
-                    `${state.main.title ?? "article"}-structured-analysis.pdf`,
-                  );
+                  try {
+                    await exportStructuredAnalysisToPdf(
+                      state.main.structured as StructuredAnalysisData,
+                      state.main.title,
+                      `${state.main.title ?? "article"}-structured-analysis.pdf`,
+                    );
+                  } catch (err) {
+                    console.error("PDF export failed:", err);
+                    alert(
+                      "PDF export failed. Please try copying as JSON instead.",
+                    );
+                  }
                 }
               : undefined
           }
@@ -4465,11 +4494,18 @@ export default function Home() {
             state.pairwiseComparisons &&
             Object.keys(state.pairwiseComparisons).length > 0
               ? async () => {
-                  await exportPairwiseComparisonsToPdf(
-                    state.pairwiseComparisons!,
-                    state.main.title,
-                    "pairwise-comparative-analysis.pdf",
-                  );
+                  try {
+                    await exportPairwiseComparisonsToPdf(
+                      state.pairwiseComparisons!,
+                      state.main.title,
+                      "pairwise-comparative-analysis.pdf",
+                    );
+                  } catch (err) {
+                    console.error("PDF export failed:", err);
+                    alert(
+                      "PDF export failed. Please try the 'Export JSON' button instead.",
+                    );
+                  }
                 }
               : undefined
           }

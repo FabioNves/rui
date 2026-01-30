@@ -5096,7 +5096,7 @@ export default function Home() {
                   try {
                     await exportFinalReportToPdf(
                       state.finalReportMarkdown!,
-                      "rui-critical-analysis.pdf",
+                      state.main.title,
                     );
                   } catch (err) {
                     console.error("PDF export failed:", err);
@@ -5170,7 +5170,7 @@ export default function Home() {
                       if (state.finalReportMarkdown) {
                         await exportFinalReportToPdf(
                           state.finalReportMarkdown,
-                          "rui-critical-analysis.pdf",
+                          state.main.title,
                         );
                       }
                     } catch (err) {

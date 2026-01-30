@@ -2476,8 +2476,8 @@ export default function Home() {
                 onChange={(e) => setProvider(e.target.value as Provider)}
                 className="rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
               >
-                <option value="openai">OpenAI</option>
-                <option value="gemini">Google Gemini</option>
+                <option value="openai">OpenAI (GPT-5.2)</option>
+                <option value="gemini">Google Gemini (Gemini 3)</option>
               </select>
             </label>
             {process.env.NODE_ENV !== "production" && (
@@ -2500,7 +2500,7 @@ export default function Home() {
           </div>
         </Card>
 
-        <Card title="2) Main Article (DOI and/or PDF)">
+        <Card title="2) Main Article">
           <div className="grid gap-3">
             <div className="grid gap-3 md:grid-cols-3">
               <label className="grid gap-1 md:col-span-2">

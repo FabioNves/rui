@@ -9,6 +9,7 @@ import { RECOMMENDED_STRUCTURE } from "@/lib/recommendedStructure";
 import { renderMarkdownToSafeHtml } from "@/lib/markdown";
 import { exportElementToPdf } from "@/lib/pdf/exportReport";
 import { exportStructuredAnalysisToPdf } from "@/lib/pdf/exportStructuredAnalysis";
+import { exportPairwiseComparisonsToPdf } from "@/lib/pdf/exportPairwiseComparison";
 
 type Provider = "openai" | "gemini";
 
@@ -108,7 +109,8 @@ type AppState = {
   };
   main: Article;
   related: Article[];
-  comparison?: unknown;
+  comparison?: unknown; // Legacy field, kept for backward compatibility
+  pairwiseComparisons?: Record<string, PairwiseComparison>; // New: comparison per related article ID
   structureMode: "recommended" | "custom";
   customStructure: string;
   customSections: CustomSection[];
@@ -752,6 +754,7 @@ function CriticalReviewView({
   );
 }
 
+// Legacy type for backward compatibility
 type ComparativeAnalysisData = {
   summary?: string;
   similarities?: string[];
@@ -761,6 +764,86 @@ type ComparativeAnalysisData = {
     main: string;
     related: Array<{ id: string; notes: string }>;
   }>;
+};
+
+// New pairwise comparison type - matches pairwiseComparisonSchema
+type PairwiseComparison = {
+  relatedId: string;
+  relatedTitle: string;
+  isRelated: boolean;
+  relatednessScore: number;
+  relatednessExplanation: string;
+  summary: string;
+  dimensions: Array<{
+    dimension: string;
+    label: string;
+    mainSummary: string;
+    relatedSummary: string;
+    mainScore?: number;
+    relatedScore?: number;
+    verdict:
+      | "main_stronger"
+      | "related_stronger"
+      | "comparable"
+      | "not_applicable";
+    confidence: "high" | "medium" | "low";
+  }>;
+  similarities: Array<{
+    claim: string;
+    confidence: "high" | "medium" | "low";
+  }>;
+  differences: Array<{
+    claim: string;
+    confidence: "high" | "medium" | "low";
+    favoredPaper: "main" | "related" | "neutral";
+  }>;
+  gapAnalysis: {
+    uniqueToMain: string[];
+    uniqueToRelated: string[];
+    sharedGaps: string[];
+  };
+  contradictions: Array<{
+    topic: string;
+    mainPosition: string;
+    relatedPosition: string;
+    possibleExplanation: string;
+  }>;
+  methodologicalRigor: {
+    sampleSizeAdequacy: {
+      main: string;
+      related: string;
+      verdict: "main_stronger" | "related_stronger" | "comparable";
+    };
+    biasControls: {
+      main: string;
+      related: string;
+      verdict: "main_stronger" | "related_stronger" | "comparable";
+    };
+    statisticalRigor: {
+      main: string;
+      related: string;
+      verdict: "main_stronger" | "related_stronger" | "comparable";
+    };
+    replicability: {
+      main: string;
+      related: string;
+      verdict: "main_stronger" | "related_stronger" | "comparable";
+    };
+  };
+  temporalContext: {
+    chronologicalNote: string;
+    methodologicalEvolution: string;
+    findingsProgression: string;
+  };
+  overallVerdict: {
+    strongerPaper: "main" | "related" | "comparable";
+    explanation: string;
+  };
+  recommendations: {
+    forResearchers: string[];
+    forPractitioners: string[];
+    synthesizedConclusion: string;
+  };
 };
 
 function ComparativeAnalysisView({
@@ -923,6 +1006,660 @@ function ComparativeAnalysisView({
           </div>
         </AnalysisSection>
       )}
+    </div>
+  );
+}
+
+// Single pairwise comparison card component
+function PairwiseComparisonCard({
+  comparison,
+  mainTitle,
+  isExpanded,
+  onToggle,
+}: {
+  comparison: PairwiseComparison;
+  mainTitle?: string;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
+  const verdictColors: Record<string, string> = {
+    main: "text-emerald-400",
+    related: "text-blue-400",
+    comparable: "text-purple-400",
+  };
+
+  const confidenceColors: Record<string, string> = {
+    high: "bg-emerald-500/20 text-emerald-400",
+    medium: "bg-yellow-500/20 text-yellow-400",
+    low: "bg-orange-500/20 text-orange-400",
+  };
+
+  return (
+    <div
+      className={`rounded-xl border ${comparison.isRelated ? "border-purple-500/30 bg-purple-950/20" : "border-red-500/30 bg-red-950/20"}`}
+    >
+      {/* Collapsible Header */}
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center justify-between p-4 text-left"
+      >
+        <div className="flex items-center gap-3">
+          {/* Relatedness indicator */}
+          {comparison.isRelated ? (
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20">
+              <span className="text-lg font-bold text-emerald-400">
+                {comparison.relatednessScore}
+              </span>
+            </div>
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/20">
+              <svg
+                className="h-5 w-5 text-red-400"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+          )}
+          <div>
+            <h4 className="font-semibold text-zinc-100">
+              {comparison.relatedTitle}
+            </h4>
+            <p className="text-sm text-zinc-400">
+              {comparison.isRelated
+                ? `Relatedness: ${comparison.relatednessScore}/5 • ${comparison.dimensions?.length ?? 0} dimensions analyzed`
+                : "⚠️ This paper may not be related to your main article"}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {comparison.overallVerdict && (
+            <span
+              className={`text-sm font-medium ${verdictColors[comparison.overallVerdict.strongerPaper]}`}
+            >
+              {comparison.overallVerdict.strongerPaper === "main"
+                ? "Main stronger"
+                : comparison.overallVerdict.strongerPaper === "related"
+                  ? "Related stronger"
+                  : "Comparable"}
+            </span>
+          )}
+          <svg
+            className={`h-5 w-5 text-zinc-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </div>
+      </button>
+
+      {/* Expanded Content */}
+      {isExpanded && (
+        <div className="border-t border-white/10 p-4 space-y-6">
+          {/* Warning for unrelated papers */}
+          {!comparison.isRelated && (
+            <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-4">
+              <div className="flex items-start gap-3">
+                <svg
+                  className="h-5 w-5 text-red-400 mt-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <div>
+                  <h5 className="font-semibold text-red-300">
+                    Unrelated Article Detected
+                  </h5>
+                  <p className="text-sm text-red-200/80 mt-1">
+                    {comparison.relatednessExplanation}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Summary */}
+          <div className="rounded-lg bg-zinc-900/50 p-4">
+            <h5 className="text-sm font-semibold text-purple-300 mb-2">
+              Summary
+            </h5>
+            <p className="text-sm text-zinc-300 leading-relaxed">
+              {comparison.summary}
+            </p>
+          </div>
+
+          {/* Dimensions Comparison Matrix */}
+          {comparison.dimensions && comparison.dimensions.length > 0 && (
+            <div>
+              <h5 className="text-sm font-semibold text-cyan-300 mb-3">
+                Comparison Dimensions
+              </h5>
+              <div className="space-y-3">
+                {comparison.dimensions.map((dim, i) => (
+                  <div
+                    key={i}
+                    className="rounded-lg border border-white/5 bg-zinc-900/30 p-3"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
+                        {dim.label}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {dim.mainScore && dim.relatedScore && (
+                          <span className="text-xs text-zinc-500">
+                            Main: {dim.mainScore}/5 vs Related:{" "}
+                            {dim.relatedScore}/5
+                          </span>
+                        )}
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full ${
+                            dim.verdict === "main_stronger"
+                              ? "bg-emerald-500/20 text-emerald-400"
+                              : dim.verdict === "related_stronger"
+                                ? "bg-blue-500/20 text-blue-400"
+                                : dim.verdict === "comparable"
+                                  ? "bg-purple-500/20 text-purple-400"
+                                  : "bg-zinc-500/20 text-zinc-400"
+                          }`}
+                        >
+                          {dim.verdict.replace("_", " ")}
+                        </span>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full ${confidenceColors[dim.confidence]}`}
+                        >
+                          {dim.confidence}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-xs font-medium text-emerald-400/70">
+                          Main Article
+                        </span>
+                        <p className="text-sm text-zinc-300 mt-1">
+                          {dim.mainSummary}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-xs font-medium text-blue-400/70">
+                          Related Article
+                        </span>
+                        <p className="text-sm text-zinc-300 mt-1">
+                          {dim.relatedSummary}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Similarities & Differences side by side */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Similarities */}
+            <div>
+              <h5 className="text-sm font-semibold text-emerald-300 mb-2 flex items-center gap-2">
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                Similarities ({comparison.similarities?.length ?? 0})
+              </h5>
+              <ul className="space-y-2">
+                {comparison.similarities?.map((s, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <span
+                      className={`mt-1 px-1.5 py-0.5 rounded text-xs ${confidenceColors[s.confidence]}`}
+                    >
+                      {s.confidence.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="text-zinc-300">{s.claim}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Differences */}
+            <div>
+              <h5 className="text-sm font-semibold text-orange-300 mb-2 flex items-center gap-2">
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                  />
+                </svg>
+                Differences ({comparison.differences?.length ?? 0})
+              </h5>
+              <ul className="space-y-2">
+                {comparison.differences?.map((d, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    <span
+                      className={`mt-1 px-1.5 py-0.5 rounded text-xs ${
+                        d.favoredPaper === "main"
+                          ? "bg-emerald-500/20 text-emerald-400"
+                          : d.favoredPaper === "related"
+                            ? "bg-blue-500/20 text-blue-400"
+                            : "bg-zinc-500/20 text-zinc-400"
+                      }`}
+                    >
+                      {d.favoredPaper.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="text-zinc-300">{d.claim}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Gap Analysis */}
+          {comparison.gapAnalysis && (
+            <div>
+              <h5 className="text-sm font-semibold text-yellow-300 mb-3">
+                Gap Analysis
+              </h5>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg bg-emerald-950/30 border border-emerald-500/20 p-3">
+                  <span className="text-xs font-medium text-emerald-400">
+                    Unique to Main
+                  </span>
+                  <ul className="mt-2 space-y-1">
+                    {comparison.gapAnalysis.uniqueToMain.map((g, i) => (
+                      <li key={i} className="text-xs text-zinc-300">
+                        • {g}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="rounded-lg bg-blue-950/30 border border-blue-500/20 p-3">
+                  <span className="text-xs font-medium text-blue-400">
+                    Unique to Related
+                  </span>
+                  <ul className="mt-2 space-y-1">
+                    {comparison.gapAnalysis.uniqueToRelated.map((g, i) => (
+                      <li key={i} className="text-xs text-zinc-300">
+                        • {g}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="rounded-lg bg-zinc-800/50 border border-zinc-500/20 p-3">
+                  <span className="text-xs font-medium text-zinc-400">
+                    Shared Gaps
+                  </span>
+                  <ul className="mt-2 space-y-1">
+                    {comparison.gapAnalysis.sharedGaps.map((g, i) => (
+                      <li key={i} className="text-xs text-zinc-300">
+                        • {g}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Contradictions */}
+          {comparison.contradictions &&
+            comparison.contradictions.length > 0 && (
+              <div>
+                <h5 className="text-sm font-semibold text-red-300 mb-3 flex items-center gap-2">
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                  Contradictions ({comparison.contradictions.length})
+                </h5>
+                <div className="space-y-3">
+                  {comparison.contradictions.map((c, i) => (
+                    <div
+                      key={i}
+                      className="rounded-lg bg-red-950/20 border border-red-500/20 p-3"
+                    >
+                      <div className="text-sm font-medium text-red-300 mb-2">
+                        {c.topic}
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <span className="text-emerald-400">Main says:</span>
+                          <p className="text-zinc-300 mt-1">{c.mainPosition}</p>
+                        </div>
+                        <div>
+                          <span className="text-blue-400">Related says:</span>
+                          <p className="text-zinc-300 mt-1">
+                            {c.relatedPosition}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-xs text-zinc-400">
+                        <span className="text-yellow-400">
+                          Possible explanation:
+                        </span>{" "}
+                        {c.possibleExplanation}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          {/* Methodological Rigor */}
+          {comparison.methodologicalRigor && (
+            <div>
+              <h5 className="text-sm font-semibold text-indigo-300 mb-3">
+                Methodological Rigor
+              </h5>
+              <div className="grid grid-cols-2 gap-3">
+                {Object.entries(comparison.methodologicalRigor).map(
+                  ([key, value]) => (
+                    <div
+                      key={key}
+                      className="rounded-lg bg-zinc-900/30 border border-white/5 p-3"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-indigo-400 capitalize">
+                          {key.replace(/([A-Z])/g, " $1").trim()}
+                        </span>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full ${
+                            value.verdict === "main_stronger"
+                              ? "bg-emerald-500/20 text-emerald-400"
+                              : value.verdict === "related_stronger"
+                                ? "bg-blue-500/20 text-blue-400"
+                                : "bg-purple-500/20 text-purple-400"
+                          }`}
+                        >
+                          {value.verdict.replace("_", " ")}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-emerald-400/60">Main:</span>
+                          <p className="text-zinc-300">{value.main}</p>
+                        </div>
+                        <div>
+                          <span className="text-blue-400/60">Related:</span>
+                          <p className="text-zinc-300">{value.related}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ),
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Temporal Context */}
+          {comparison.temporalContext && (
+            <div className="rounded-lg bg-zinc-900/30 border border-white/5 p-4">
+              <h5 className="text-sm font-semibold text-amber-300 mb-3">
+                Temporal Context
+              </h5>
+              <div className="space-y-2 text-sm text-zinc-300">
+                <p>
+                  <span className="text-amber-400/70">Chronology:</span>{" "}
+                  {comparison.temporalContext.chronologicalNote}
+                </p>
+                <p>
+                  <span className="text-amber-400/70">Method Evolution:</span>{" "}
+                  {comparison.temporalContext.methodologicalEvolution}
+                </p>
+                <p>
+                  <span className="text-amber-400/70">
+                    Findings Progression:
+                  </span>{" "}
+                  {comparison.temporalContext.findingsProgression}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Overall Verdict */}
+          {comparison.overallVerdict && (
+            <div
+              className={`rounded-lg p-4 ${
+                comparison.overallVerdict.strongerPaper === "main"
+                  ? "bg-emerald-950/30 border border-emerald-500/30"
+                  : comparison.overallVerdict.strongerPaper === "related"
+                    ? "bg-blue-950/30 border border-blue-500/30"
+                    : "bg-purple-950/30 border border-purple-500/30"
+              }`}
+            >
+              <h5 className="text-sm font-semibold text-zinc-100 mb-2">
+                Overall Verdict
+              </h5>
+              <div className="flex items-center gap-3 mb-2">
+                <span
+                  className={`text-lg font-bold ${verdictColors[comparison.overallVerdict.strongerPaper]}`}
+                >
+                  {comparison.overallVerdict.strongerPaper === "main"
+                    ? `${mainTitle ?? "Main Article"} is Stronger`
+                    : comparison.overallVerdict.strongerPaper === "related"
+                      ? `${comparison.relatedTitle} is Stronger`
+                      : "Papers are Comparable"}
+                </span>
+              </div>
+              <p className="text-sm text-zinc-300">
+                {comparison.overallVerdict.explanation}
+              </p>
+            </div>
+          )}
+
+          {/* Recommendations */}
+          {comparison.recommendations && (
+            <div>
+              <h5 className="text-sm font-semibold text-teal-300 mb-3">
+                Recommendations
+              </h5>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-lg bg-teal-950/20 border border-teal-500/20 p-3">
+                  <span className="text-xs font-medium text-teal-400">
+                    For Researchers
+                  </span>
+                  <ul className="mt-2 space-y-1">
+                    {comparison.recommendations.forResearchers.map((r, i) => (
+                      <li key={i} className="text-xs text-zinc-300">
+                        • {r}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="rounded-lg bg-sky-950/20 border border-sky-500/20 p-3">
+                  <span className="text-xs font-medium text-sky-400">
+                    For Practitioners
+                  </span>
+                  <ul className="mt-2 space-y-1">
+                    {comparison.recommendations.forPractitioners.map((r, i) => (
+                      <li key={i} className="text-xs text-zinc-300">
+                        • {r}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              <div className="mt-3 rounded-lg bg-zinc-800/50 p-3">
+                <span className="text-xs font-medium text-zinc-400">
+                  Synthesized Conclusion
+                </span>
+                <p className="text-sm text-zinc-300 mt-1">
+                  {comparison.recommendations.synthesizedConclusion}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Container for all pairwise comparisons
+function PairwiseComparisonsView({
+  comparisons,
+  mainTitle,
+}: {
+  comparisons: Record<string, PairwiseComparison>;
+  mainTitle?: string;
+}) {
+  const [expandedId, setExpandedId] = React.useState<string | null>(null);
+
+  const comparisonsList = Object.values(comparisons);
+  const relatedCount = comparisonsList.filter((c) => c.isRelated).length;
+  const unrelatedCount = comparisonsList.filter((c) => !c.isRelated).length;
+
+  // Calculate overall stats
+  const avgRelatedness =
+    comparisonsList.length > 0
+      ? (
+          comparisonsList.reduce((sum, c) => sum + c.relatednessScore, 0) /
+          comparisonsList.length
+        ).toFixed(1)
+      : 0;
+
+  return (
+    <div className="space-y-4">
+      {/* Summary Header */}
+      <div className="rounded-xl bg-gradient-to-r from-purple-950/50 to-pink-950/50 p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-semibold text-zinc-50">
+              Pairwise Comparative Analysis
+            </h3>
+            <p className="mt-1 text-sm text-zinc-400">
+              Comparing &quot;{mainTitle ?? "Main Article"}&quot; with{" "}
+              {comparisonsList.length} related article
+              {comparisonsList.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-medium text-emerald-400">
+              {relatedCount} Related
+            </div>
+            {unrelatedCount > 0 && (
+              <div className="flex items-center gap-1.5 rounded-full bg-red-500/20 px-3 py-1 text-xs font-medium text-red-400">
+                {unrelatedCount} Unrelated
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="mt-4 grid grid-cols-4 gap-3">
+          <div className="rounded-lg bg-white/5 p-3 text-center">
+            <div className="text-2xl font-bold text-purple-400">
+              {comparisonsList.length}
+            </div>
+            <div className="text-xs text-zinc-400">Articles Compared</div>
+          </div>
+          <div className="rounded-lg bg-white/5 p-3 text-center">
+            <div className="text-2xl font-bold text-cyan-400">
+              {avgRelatedness}
+            </div>
+            <div className="text-xs text-zinc-400">Avg Relatedness</div>
+          </div>
+          <div className="rounded-lg bg-white/5 p-3 text-center">
+            <div className="text-2xl font-bold text-emerald-400">
+              {
+                comparisonsList.filter(
+                  (c) => c.overallVerdict?.strongerPaper === "main",
+                ).length
+              }
+            </div>
+            <div className="text-xs text-zinc-400">Main Stronger</div>
+          </div>
+          <div className="rounded-lg bg-white/5 p-3 text-center">
+            <div className="text-2xl font-bold text-blue-400">
+              {
+                comparisonsList.filter(
+                  (c) => c.overallVerdict?.strongerPaper === "related",
+                ).length
+              }
+            </div>
+            <div className="text-xs text-zinc-400">Related Stronger</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Unrelated Warning */}
+      {unrelatedCount > 0 && (
+        <div className="rounded-lg bg-red-500/10 border border-red-500/30 p-4">
+          <div className="flex items-center gap-2 text-sm font-medium text-red-400">
+            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fillRule="evenodd"
+                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
+            </svg>
+            {unrelatedCount} article{unrelatedCount !== 1 ? "s" : ""} may not be
+            related to your main article
+          </div>
+          <p className="mt-1 text-xs text-red-300/70">
+            Consider removing unrelated articles for a more focused analysis.
+          </p>
+        </div>
+      )}
+
+      {/* Individual Comparisons */}
+      <div className="space-y-3">
+        {comparisonsList.map((comparison) => (
+          <PairwiseComparisonCard
+            key={comparison.relatedId}
+            comparison={comparison}
+            mainTitle={mainTitle}
+            isExpanded={expandedId === comparison.relatedId}
+            onToggle={() =>
+              setExpandedId(
+                expandedId === comparison.relatedId
+                  ? null
+                  : comparison.relatedId,
+              )
+            }
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -1364,7 +2101,11 @@ export default function Home() {
     setLogMessages((prev) => [...prev, { time, text }]);
   };
 
-  const addUsageLog = (usage: TokenUsage, model: string): number => {
+  const addUsageLog = (
+    usage: TokenUsage,
+    model: string,
+    prefix: string = "",
+  ): number => {
     const cost = calculateCost(model, usage);
     const totalTokens = usage.inputTokens + usage.outputTokens;
     setSessionCost((prev) => ({
@@ -1372,9 +2113,9 @@ export default function Home() {
       euros: prev.euros + cost,
     }));
     addLog(
-      `📊 Tokens: ${usage.inputTokens.toLocaleString()} in / ${usage.outputTokens.toLocaleString()} out${usage.cachedInputTokens ? ` (${usage.cachedInputTokens.toLocaleString()} cached)` : ""}`,
+      `${prefix}📊 Tokens: ${usage.inputTokens.toLocaleString()} in / ${usage.outputTokens.toLocaleString()} out${usage.cachedInputTokens ? ` (${usage.cachedInputTokens.toLocaleString()} cached)` : ""}`,
     );
-    addLog(`💰 Cost: ${formatCost(cost)}`);
+    addLog(`${prefix}💰 Cost: ${formatCost(cost)}`);
     return cost;
   };
 
@@ -1738,88 +2479,142 @@ export default function Home() {
     setBusy("Running comparative analysis…");
 
     // Detailed progress logging
-    addLog(`📊 Starting comparative analysis`);
+    addLog(`📊 Starting Pairwise Comparative Analysis`);
     addLog(
       `🤖 Provider: ${state.provider.toUpperCase()} | Model: ${state.model}`,
     );
     addLog("─".repeat(40));
     addLog(`📄 Main article: "${state.main.title ?? "Untitled"}"`);
-    eligible.forEach((r, i) => {
-      addLog(`📄 Related ${i + 1}: "${r.title ?? "Untitled"}"`);
-    });
+    addLog(
+      `📚 Comparing against ${eligible.length} related article${eligible.length > 1 ? "s" : ""}`,
+    );
     addLog("─".repeat(40));
 
-    // Progress simulation
-    const progressMessages = [
-      { delay: 500, msg: "🔍 Analyzing main article structure..." },
-      { delay: 2000, msg: "📚 Processing related articles..." },
-      { delay: 4000, msg: "🔄 Identifying similarities..." },
-      { delay: 6000, msg: "⚖️ Identifying differences..." },
-      { delay: 8000, msg: "📐 Building comparison dimensions..." },
-      { delay: 12000, msg: "✍️ Generating summary..." },
-      { delay: 18000, msg: "⏳ Still processing..." },
-    ];
-
-    const timeouts: NodeJS.Timeout[] = [];
-    let completed = false;
-
-    for (const { delay, msg } of progressMessages) {
-      const timeout = setTimeout(() => {
-        if (!completed) addLog(msg);
-      }, delay);
-      timeouts.push(timeout);
-    }
+    const pairwiseResults: Record<string, PairwiseComparison> = {};
+    let totalCost = 0;
+    let relatedCount = 0;
+    let unrelatedCount = 0;
 
     try {
-      addLog("📤 Sending request to AI...");
-      const response = await postJson<{
-        result: ComparativeAnalysisData;
-        usage: TokenUsage;
-      }>("/api/analyze/compare", {
-        provider: state.provider,
-        model: state.model,
-        main: {
-          id: state.main.id,
-          title: state.main.title,
-          structured: state.main.structured,
-          critique: state.main.critique,
-        },
-        related: eligible.map((r) => ({
-          id: r.id,
-          title: r.title,
-          structured: r.structured,
-          critique: r.critique,
-        })),
-      });
+      for (let i = 0; i < eligible.length; i++) {
+        const related = eligible[i];
+        const articleNum = i + 1;
 
-      completed = true;
-      timeouts.forEach(clearTimeout);
+        addLog("");
+        addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+        addLog(
+          `🔄 [${articleNum}/${eligible.length}] Comparing with: "${related.title ?? "Untitled"}"`,
+        );
+        addLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
-      addLog("─".repeat(40));
-      addLog("📥 Received response from AI");
-      const cost = addUsageLog(response.usage, state.model);
+        setBusy(`Comparing article ${articleNum} of ${eligible.length}…`);
 
-      // Show what was found
-      const result = response.result;
+        addLog(`   📤 Sending to AI for analysis...`);
+
+        const startTime = Date.now();
+
+        const response = await postJson<{
+          result: PairwiseComparison;
+          usage: TokenUsage;
+        }>("/api/analyze/compare", {
+          provider: state.provider,
+          model: state.model,
+          main: {
+            id: state.main.id,
+            title: state.main.title,
+            year: state.main.year,
+            structured: state.main.structured,
+            critique: state.main.critique,
+          },
+          related: {
+            id: related.id,
+            title: related.title,
+            year: related.year,
+            structured: related.structured,
+            critique: related.critique,
+          },
+        });
+
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        addLog(`   📥 Response received (${elapsed}s)`);
+
+        const cost = addUsageLog(response.usage, state.model, "   ");
+        totalCost += cost;
+
+        const result = response.result;
+        pairwiseResults[related.id] = result;
+
+        // Log key findings for this comparison
+        addLog(`   ─────────────────────────────────`);
+
+        // Relatedness check with prominent indicator
+        if (result.isRelated) {
+          relatedCount++;
+          const scoreEmoji =
+            result.relatednessScore >= 4
+              ? "🟢"
+              : result.relatednessScore >= 3
+                ? "🟡"
+                : "🟠";
+          addLog(
+            `   ${scoreEmoji} Relatedness: ${result.relatednessScore}/5 - Papers ARE related`,
+          );
+        } else {
+          unrelatedCount++;
+          addLog(
+            `   🔴 ⚠️ UNRELATED: This paper may not be relevant to your main article!`,
+          );
+          addLog(
+            `      Reason: ${result.relatednessExplanation.slice(0, 100)}...`,
+          );
+        }
+
+        // Quick stats
+        addLog(`   📊 Dimensions analyzed: ${result.dimensions?.length ?? 0}`);
+        addLog(`   ✅ Similarities: ${result.similarities?.length ?? 0}`);
+        addLog(`   ⚖️ Differences: ${result.differences?.length ?? 0}`);
+        addLog(`   ⚡ Contradictions: ${result.contradictions?.length ?? 0}`);
+
+        // Overall verdict
+        const verdictEmoji =
+          result.overallVerdict?.strongerPaper === "main"
+            ? "📗"
+            : result.overallVerdict?.strongerPaper === "related"
+              ? "📘"
+              : "📙";
+        addLog(
+          `   ${verdictEmoji} Verdict: ${result.overallVerdict?.strongerPaper ?? "N/A"}`,
+        );
+
+        // Update state progressively so user sees results appearing
+        setState((s) => ({
+          ...s,
+          pairwiseComparisons: { ...s.pairwiseComparisons, ...pairwiseResults },
+        }));
+      }
+
+      // Final summary
+      addLog("");
+      addLog("═".repeat(40));
+      addLog("📋 COMPARATIVE ANALYSIS COMPLETE");
+      addLog("═".repeat(40));
+      addLog(`   ✅ Total articles compared: ${eligible.length}`);
+      addLog(`   🟢 Related articles: ${relatedCount}`);
+      if (unrelatedCount > 0) {
+        addLog(
+          `   🔴 Unrelated articles: ${unrelatedCount} (consider removing)`,
+        );
+      }
+      addLog(`   💰 Total cost: ${formatCost(totalCost)}`);
       addLog("─".repeat(40));
-      addLog("📋 Comparison Summary:");
-      if (result.similarities)
-        addLog(`   Similarities: ${result.similarities.length} items`);
-      if (result.differences)
-        addLog(`   Differences: ${result.differences.length} items`);
-      if (result.comparisonDimensions)
-        addLog(`   Dimensions: ${result.comparisonDimensions.length} aspects`);
-      addLog("─".repeat(40));
+      addLog("✅ All comparisons complete! View results in the modal.");
 
       setState((s) => ({
         ...s,
-        comparison: response.result,
-        stepCosts: { ...s.stepCosts, comparison: cost },
+        pairwiseComparisons: pairwiseResults,
+        stepCosts: { ...s.stepCosts, comparison: totalCost },
       }));
-      addLog("✅ Comparative analysis complete!");
     } catch (e: unknown) {
-      completed = true;
-      timeouts.forEach(clearTimeout);
       addLog("─".repeat(40));
       addLog(`❌ Error: ${errorMessage(e)}`);
       setError(errorMessage(e));
@@ -3565,24 +4360,29 @@ export default function Home() {
           title="4) Comparative Analysis"
           right={
             <div className="flex items-center gap-2">
-              {!!state.comparison && (
-                <button
-                  onClick={() => setComparisonModalOpen(true)}
-                  className="rounded-xl border border-purple-500/30 bg-purple-950/30 px-3 py-2 text-sm font-medium text-purple-300 hover:bg-purple-900/30"
-                >
-                  View Comparison ✓
-                </button>
-              )}
+              {state.pairwiseComparisons &&
+                Object.keys(state.pairwiseComparisons).length > 0 && (
+                  <button
+                    onClick={() => setComparisonModalOpen(true)}
+                    className="rounded-xl border border-purple-500/30 bg-purple-950/30 px-3 py-2 text-sm font-medium text-purple-300 hover:bg-purple-900/30"
+                  >
+                    View Comparison ✓
+                  </button>
+                )}
               <button
                 onClick={() => void runCompare()}
                 className="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-black hover:bg-zinc-200"
               >
-                {state.comparison ? "Re-compare" : "Compare"}
+                {state.pairwiseComparisons &&
+                Object.keys(state.pairwiseComparisons).length > 0
+                  ? "Re-compare"
+                  : "Compare"}
               </button>
             </div>
           }
         >
-          {state.comparison ? (
+          {state.pairwiseComparisons &&
+          Object.keys(state.pairwiseComparisons).length > 0 ? (
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm text-emerald-400">
                 <svg
@@ -3596,15 +4396,52 @@ export default function Home() {
                     clipRule="evenodd"
                   />
                 </svg>
-                Comparative analysis complete
+                Pairwise comparative analysis complete
               </div>
-              <p className="text-sm text-zinc-400">
-                {(state.comparison as ComparativeAnalysisData).summary?.slice(
-                  0,
-                  200,
-                )}
-                ...
-              </p>
+              {(() => {
+                const comparisons = Object.values(state.pairwiseComparisons!);
+                const related = comparisons.filter((c) => c.isRelated).length;
+                const unrelated = comparisons.filter(
+                  (c) => !c.isRelated,
+                ).length;
+                return (
+                  <div className="space-y-2">
+                    <p className="text-sm text-zinc-400">
+                      Compared {comparisons.length} article
+                      {comparisons.length !== 1 ? "s" : ""} •
+                      {related > 0 && (
+                        <span className="text-emerald-400">
+                          {" "}
+                          {related} related
+                        </span>
+                      )}
+                      {unrelated > 0 && (
+                        <span className="text-red-400">
+                          {" "}
+                          • {unrelated} unrelated
+                        </span>
+                      )}
+                    </p>
+                    {unrelated > 0 && (
+                      <div className="flex items-center gap-2 text-xs text-red-400">
+                        <svg
+                          className="h-4 w-4"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        {unrelated} article{unrelated !== 1 ? "s" : ""} may not
+                        be related
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               <button
                 onClick={() => setComparisonModalOpen(true)}
                 className="text-sm text-purple-400 hover:text-purple-300"
@@ -3623,50 +4460,71 @@ export default function Home() {
         <Modal
           open={comparisonModalOpen}
           onClose={() => setComparisonModalOpen(false)}
-          title="Comparative Analysis"
+          title="Pairwise Comparative Analysis"
           onDownload={
-            state.comparison
-              ? () => {
-                  const blob = new Blob(
-                    [JSON.stringify(state.comparison, null, 2)],
-                    { type: "application/json" },
+            state.pairwiseComparisons &&
+            Object.keys(state.pairwiseComparisons).length > 0
+              ? async () => {
+                  await exportPairwiseComparisonsToPdf(
+                    state.pairwiseComparisons!,
+                    state.main.title,
+                    "pairwise-comparative-analysis.pdf",
                   );
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = "comparative-analysis.json";
-                  a.click();
-                  URL.revokeObjectURL(url);
                 }
               : undefined
           }
         >
-          {state.comparison ? (
+          {state.pairwiseComparisons &&
+          Object.keys(state.pairwiseComparisons).length > 0 ? (
             <div className="space-y-4">
               <div className="flex items-center justify-end gap-2">
                 <button
                   onClick={() => {
-                    const data = state.comparison as ComparativeAnalysisData;
-                    const text = [
-                      "# Comparative Analysis",
-                      "",
-                      data.summary ? `## Summary\n${data.summary}` : "",
-                      "",
-                      data.similarities?.length
-                        ? `## Similarities\n${data.similarities.map((s) => `- ${s}`).join("\n")}`
-                        : "",
-                      "",
-                      data.differences?.length
-                        ? `## Differences\n${data.differences.map((d) => `- ${d}`).join("\n")}`
-                        : "",
-                      "",
-                      data.comparisonDimensions?.length
-                        ? `## Detailed Comparison\n${data.comparisonDimensions.map((dim) => `### ${dim.dimension}\n**Main:** ${dim.main}\n${dim.related.map((r) => `**${r.id}:** ${r.notes}`).join("\n")}`).join("\n\n")}`
-                        : "",
-                    ]
-                      .filter(Boolean)
+                    const comparisons = Object.values(
+                      state.pairwiseComparisons!,
+                    );
+                    const text = comparisons
+                      .map((c) =>
+                        [
+                          `## ${c.relatedTitle}`,
+                          "",
+                          `**Relatedness:** ${c.relatednessScore}/5 (${c.isRelated ? "Related" : "NOT RELATED"})`,
+                          c.isRelated ? "" : `> ⚠️ ${c.relatednessExplanation}`,
+                          "",
+                          `### Summary`,
+                          c.summary,
+                          "",
+                          `### Overall Verdict`,
+                          `**${c.overallVerdict?.strongerPaper === "main" ? "Main article is stronger" : c.overallVerdict?.strongerPaper === "related" ? "Related article is stronger" : "Papers are comparable"}**`,
+                          c.overallVerdict?.explanation ?? "",
+                          "",
+                          c.similarities.length > 0
+                            ? `### Similarities\n${c.similarities.map((s) => `- ${s.claim} (${s.confidence})`).join("\n")}`
+                            : "",
+                          "",
+                          c.differences.length > 0
+                            ? `### Differences\n${c.differences.map((d) => `- ${d.claim} [favors: ${d.favoredPaper}] (${d.confidence})`).join("\n")}`
+                            : "",
+                          "",
+                          c.contradictions.length > 0
+                            ? `### Contradictions\n${c.contradictions.map((ct) => `- **${ct.topic}**: Main says "${ct.mainPosition}" vs Related says "${ct.relatedPosition}". ${ct.possibleExplanation}`).join("\n")}`
+                            : "",
+                          "",
+                          `### Recommendations`,
+                          `**For Researchers:**\n${c.recommendations.forResearchers.map((r) => `- ${r}`).join("\n")}`,
+                          `**For Practitioners:**\n${c.recommendations.forPractitioners.map((r) => `- ${r}`).join("\n")}`,
+                          `**Synthesized Conclusion:** ${c.recommendations.synthesizedConclusion}`,
+                          "",
+                          "---",
+                          "",
+                        ]
+                          .filter(Boolean)
+                          .join("\n"),
+                      )
                       .join("\n");
-                    navigator.clipboard.writeText(text);
+                    navigator.clipboard.writeText(
+                      `# Pairwise Comparative Analysis\n\n${text}`,
+                    );
                   }}
                   className="flex items-center gap-1.5 rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-zinc-700"
                 >
@@ -3688,13 +4546,13 @@ export default function Home() {
                 <button
                   onClick={() => {
                     const blob = new Blob(
-                      [JSON.stringify(state.comparison, null, 2)],
+                      [JSON.stringify(state.pairwiseComparisons, null, 2)],
                       { type: "application/json" },
                     );
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement("a");
                     a.href = url;
-                    a.download = "comparative-analysis.json";
+                    a.download = "pairwise-comparisons.json";
                     a.click();
                     URL.revokeObjectURL(url);
                   }}
@@ -3716,12 +4574,9 @@ export default function Home() {
                   Export JSON
                 </button>
               </div>
-              <ComparativeAnalysisView
-                data={state.comparison as ComparativeAnalysisData}
+              <PairwiseComparisonsView
+                comparisons={state.pairwiseComparisons}
                 mainTitle={state.main.title}
-                relatedTitles={Object.fromEntries(
-                  state.related.map((r) => [r.id, r.title ?? "Untitled"]),
-                )}
               />
             </div>
           ) : (

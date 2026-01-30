@@ -7,11 +7,85 @@ import { extractPdfWithPages, type ExtractedPage } from "@/lib/pdf/extractText";
 import { usePersistedState } from "@/lib/usePersistedState";
 import { RECOMMENDED_STRUCTURE } from "@/lib/recommendedStructure";
 import { renderMarkdownToSafeHtml } from "@/lib/markdown";
-import { exportElementToPdf } from "@/lib/pdf/exportReport";
 import { exportStructuredAnalysisToPdf } from "@/lib/pdf/exportStructuredAnalysis";
 import { exportPairwiseComparisonsToPdf } from "@/lib/pdf/exportPairwiseComparison";
+import { exportFinalReportToPdf } from "@/lib/pdf/exportFinalReport";
 
 type Provider = "openai" | "gemini";
+
+// Simple confetti animation component
+function Confetti({ active }: { active: boolean }) {
+  const [particles, setParticles] = React.useState<
+    Array<{
+      id: number;
+      x: number;
+      color: string;
+      delay: number;
+      duration: number;
+    }>
+  >([]);
+
+  React.useEffect(() => {
+    if (active) {
+      const colors = [
+        "#10b981",
+        "#3b82f6",
+        "#8b5cf6",
+        "#f59e0b",
+        "#ec4899",
+        "#06b6d4",
+      ];
+      const newParticles = Array.from({ length: 50 }, (_, i) => ({
+        id: i,
+        x: Math.random() * 100,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        delay: Math.random() * 0.5,
+        duration: 2 + Math.random() * 2,
+      }));
+      setParticles(newParticles);
+      const timer = setTimeout(() => setParticles([]), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [active]);
+
+  if (particles.length === 0) return null;
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[100] overflow-hidden">
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          className="absolute animate-confetti"
+          style={{
+            left: `${p.x}%`,
+            top: "-20px",
+            backgroundColor: p.color,
+            width: "10px",
+            height: "10px",
+            borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+            animationDelay: `${p.delay}s`,
+            animationDuration: `${p.duration}s`,
+          }}
+        />
+      ))}
+      <style jsx>{`
+        @keyframes confetti-fall {
+          0% {
+            transform: translateY(0) rotate(0deg);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(100vh) rotate(720deg);
+            opacity: 0;
+          }
+        }
+        .animate-confetti {
+          animation: confetti-fall linear forwards;
+        }
+      `}</style>
+    </div>
+  );
+}
 
 type TokenUsage = {
   inputTokens: number;
@@ -2131,6 +2205,7 @@ export default function Home() {
   const [comparisonModalOpen, setComparisonModalOpen] = React.useState(false);
   const [finalReportModalOpen, setFinalReportModalOpen] = React.useState(false);
   const [mobileActivityOpen, setMobileActivityOpen] = React.useState(false);
+  const [showConfetti, setShowConfetti] = React.useState(false);
   // State for related article modals - stores the article id or null
   const [relatedTextModalId, setRelatedTextModalId] = React.useState<
     string | null
@@ -2771,6 +2846,10 @@ export default function Home() {
         stepCosts: { ...s.stepCosts, final: cost },
       }));
       addLog("✅ Final report generated!");
+
+      // Trigger confetti celebration!
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 100);
     } catch (e: unknown) {
       completed = true;
       timeouts.forEach(clearTimeout);
@@ -2841,6 +2920,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <Confetti active={showConfetti} />
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(900px_circle_at_20%_10%,rgba(59,130,246,0.18),transparent_55%),radial-gradient(700px_circle_at_80%_20%,rgba(168,85,247,0.16),transparent_55%),radial-gradient(800px_circle_at_40%_90%,rgba(34,197,94,0.10),transparent_55%)]" />
       <header className="relative border-b border-white/10 bg-zinc-950/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-3 py-2 sm:gap-4 sm:px-6 sm:py-3 md:pr-[340px]">
@@ -5014,19 +5094,15 @@ export default function Home() {
             state.finalReportMarkdown
               ? async () => {
                   try {
-                    const modalReport = document.getElementById(
-                      "modal-report-content",
+                    await exportFinalReportToPdf(
+                      state.finalReportMarkdown!,
+                      "rui-critical-analysis.pdf",
                     );
-                    if (modalReport) {
-                      await exportElementToPdf(
-                        modalReport,
-                        "rui-critical-analysis.pdf",
-                      );
-                    } else {
-                      console.error("Modal report content element not found");
-                    }
                   } catch (err) {
                     console.error("PDF export failed:", err);
+                    alert(
+                      "PDF export failed. Please try the 'Export .md' button instead.",
+                    );
                   }
                 }
               : undefined
@@ -5091,19 +5167,17 @@ export default function Home() {
                 <button
                   onClick={async () => {
                     try {
-                      const modalReport = document.getElementById(
-                        "modal-report-content",
-                      );
-                      if (modalReport) {
-                        await exportElementToPdf(
-                          modalReport,
+                      if (state.finalReportMarkdown) {
+                        await exportFinalReportToPdf(
+                          state.finalReportMarkdown,
                           "rui-critical-analysis.pdf",
                         );
-                      } else {
-                        console.error("Modal report content element not found");
                       }
                     } catch (err) {
                       console.error("PDF export failed:", err);
+                      alert(
+                        "PDF export failed. Please try the 'Export .md' button instead.",
+                      );
                     }
                   }}
                   className="flex items-center gap-1.5 rounded-lg bg-emerald-800 px-3 py-1.5 text-xs font-medium text-emerald-100 hover:bg-emerald-700"

@@ -1620,6 +1620,13 @@ export default function Home() {
       if (result.keywords) addLog(`   Keywords: ${result.keywords.join(", ")}`);
       addLog("─".repeat(40));
       addLog("✅ Structured analysis complete!");
+
+      // Auto-open the modal
+      if (target === "main") {
+        setStructuredModalOpen(true);
+      } else {
+        setRelatedStructuredModalId(target);
+      }
     } catch (e: unknown) {
       completed = true;
       timeouts.forEach(clearTimeout);

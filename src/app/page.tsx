@@ -1262,7 +1262,7 @@ function Modal({
   onClose: () => void;
   title: string;
   children: React.ReactNode;
-  onDownload?: () => void;
+  onDownload?: () => void | Promise<void>;
 }) {
   if (!open) return null;
   return (
@@ -3636,7 +3636,7 @@ export default function Home() {
                   }
                   className="accent-emerald-500"
                 />
-                Recommended
+                Predefined
               </label>
               <label className="flex items-center gap-2 text-sm text-zinc-200">
                 <input
@@ -3941,12 +3941,12 @@ export default function Home() {
                   }
                   className="text-xs text-zinc-500 hover:text-zinc-300"
                 >
-                  Reset to recommended sections
+                  Reset to predefined sections
                 </button>
               </div>
             ) : (
               <div className="text-xs text-zinc-400">
-                Using recommended structure ({RECOMMENDED_STRUCTURE.length}{" "}
+                Using predefined structure ({RECOMMENDED_STRUCTURE.length}{" "}
                 sections). Switch to Custom to customize sections and add notes.
               </div>
             )}

@@ -11,7 +11,7 @@ const montserrat = Montserrat({
   weight: ["400", "600", "700"],
 });
 
-const SECRET_CODE = process.env.NEXT_PUBLIC_MAINTENANCE_SECRET_CODE || "1232";
+const SECRET_CODE = process.env.NEXT_PUBLIC_MAINTENANCE_SECRET_CODE || "";
 const MAX_ATTEMPTS = 3;
 
 declare global {
@@ -67,8 +67,9 @@ export default function MaintenancePage() {
 
     if (newCode.length === SECRET_CODE.length) {
       if (newCode === SECRET_CODE) {
-        // Correct code - redirect to main app
-        window.location.href = "/?bypass=true";
+        // Correct code - set bypass in sessionStorage and reload
+        sessionStorage.setItem("rui_maintenance_bypass", "true");
+        window.location.reload();
       } else {
         // Wrong code
         const newAttempts = attempts + 1;

@@ -31,14 +31,6 @@ export default function MaintenancePage() {
   const [error, setError] = useState(false);
   const [locked, setLocked] = useState(false);
 
-  useEffect(() => {
-    return () => {
-      if (vantaEffect.current) {
-        vantaEffect.current.destroy();
-      }
-    };
-  }, []);
-
   const initVanta = () => {
     if (vantaRef.current && window.VANTA && !vantaEffect.current) {
       vantaEffect.current = window.VANTA.GLOBE({
@@ -57,6 +49,22 @@ export default function MaintenancePage() {
       });
     }
   };
+
+  useEffect(() => {
+    // Try to init Vanta if scripts are already loaded
+    const timer = setTimeout(() => {
+      if (window.VANTA && !vantaEffect.current) {
+        initVanta();
+      }
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      if (vantaEffect.current) {
+        vantaEffect.current.destroy();
+      }
+    };
+  }, []);
 
   const handleKeyPress = (digit: string) => {
     if (locked) return;

@@ -28,14 +28,20 @@ export default function MaintenanceWrapper({
   // In development mode, always show the main app
   const isDevelopment = process.env.NODE_ENV === "development";
 
-  // Wait for check to complete
-  if (!checked && MAINTENANCE_MODE && !isDevelopment) {
-    return null; // or a loading spinner
+  // Show maintenance page only in production when MAINTENANCE_MODE is true and not bypassed
+  // Don't show maintenance page until we've checked sessionStorage
+  if (MAINTENANCE_MODE && !isDevelopment && checked && !bypassed) {
+    return <MaintenancePage />;
   }
 
-  // Show maintenance page only in production when MAINTENANCE_MODE is true and not bypassed
-  if (MAINTENANCE_MODE && !isDevelopment && !bypassed) {
-    return <MaintenancePage />;
+  // Show nothing while checking (very brief)
+  if (MAINTENANCE_MODE && !isDevelopment && !checked) {
+    return (
+      <div
+        className="min-h-screen w-full"
+        style={{ backgroundColor: "#1a044a" }}
+      />
+    );
   }
 
   return <>{children}</>;
